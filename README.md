@@ -76,7 +76,7 @@ You can customize these configuration parameters according to your network requi
 
 ## Contributions
 
-This DHCP server has been made possible with contributions from the open-source community, including valuable input from Richard Warburton. Feel free to contribute to this project and make it even better!
+This DHCP server has been made possible with contributions from the open-source community, including valuable code from Richard Warburton. Feel free to contribute to this project and make it even better!
 
 If you find a bug or have a feature request, please open an issue on the GitHub repository.
 
