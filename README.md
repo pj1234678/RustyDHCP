@@ -79,7 +79,7 @@ You can customize these configuration parameters according to your network requi
 
 To create a "leases" file with the example permanent lease, you can manually create a file named "leases" in the same directory as the compiled program with the following content:
 
-f4:5c:89:bf:96:8d,192.168.2.90
+f4:5c:19:af:96:8d,192.168.2.90
 
 This lease format specifies the MAC address and the corresponding IP address for the client. The DHCP server will read this file to assign permanent leases based on its contents.
 
