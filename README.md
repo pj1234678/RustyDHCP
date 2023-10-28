@@ -15,7 +15,8 @@ A simple and zero-dependency DHCP server written in Rust, with credit to Richard
 - Based on reliable networking libraries.
 - Fast and efficient.
 - Cross-platform support and cross-compilation.
-
+- Customizable Leases File: Support for a "leases" file that allows you to define permanent leases, ensuring clients always receive the same IP address.
+- 
 ## Table of Contents
 
 - [Installation](#installation)
