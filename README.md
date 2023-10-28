@@ -31,7 +31,7 @@ A simple and zero-dependency DHCP server written in Rust, with credit to Richard
 2. Clone this repository:
 
    ```bash
-   git clone https://github.com/pj1234678/rusty-dhcp.git
+   git clone [https://github.com/pj1234678/rusty-dhcp.git](https://github.com/pj1234678/RustyDHCP.git)
    ```
 
 3. Build the server:
