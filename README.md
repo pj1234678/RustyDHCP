@@ -74,6 +74,15 @@ const LEASE_NUM: u32 = 252;
 
 You can customize these configuration parameters according to your network requirements.
 
+
+
+To create a "leases" file with the example permanent lease, you can manually create a file named "leases" in the same directory as the compiled program with the following content:
+
+f4:5c:89:bf:96:8d,192.168.2.90
+
+This lease format specifies the MAC address and the corresponding IP address for the client. The DHCP server will read this file to assign permanent leases based on its contents.
+
+
 ## Contributions
 
 This DHCP server has been made possible with contributions from the open-source community, including valuable code from Richard Warburton. Feel free to contribute to this project and make it even better!
