@@ -38,8 +38,8 @@ A simple and zero-dependency DHCP server written in Rust, with credit to Richard
 3. Build the server:
 
    ```bash
-   cd rusty-dhcp
-   cargo build --release
+   cd RustyDHCP
+   cargo build --release --example server
    ```
 
 ## Usage
@@ -47,7 +47,7 @@ A simple and zero-dependency DHCP server written in Rust, with credit to Richard
 1. Start the DHCP server:
 
    ```bash
-   sudo ./target/release/rusty-dhcp
+   sudo ./target/release/examples/server
    ```
 
    The server will listen on the default DHCP ports (67 and 68) and start serving DHCP requests.
