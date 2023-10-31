@@ -1,6 +1,3 @@
-#[macro_use(u32_bytes, bytes_u32)]
-extern crate dhcp4r;
-
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, UdpSocket};
 use std::ops::Add;
@@ -24,7 +21,7 @@ const LEASE_DURATION_SECS: u32 = 86400;
 const LEASE_NUM: u32 = 252;
 
 // Derived constants
-const IP_START_NUM: u32 = bytes_u32!(IP_START);
+const IP_START_NUM: u32 = u32::from_be_bytes(IP_START);
 const INFINITE_LEASE: Option<Instant> = None; // Special value for infinite lease
 
 
