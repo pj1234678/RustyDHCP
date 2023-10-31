@@ -8,6 +8,7 @@ fn main() {
     server::Server::serve(
         UdpSocket::bind("0.0.0.0:67").unwrap(),
         Ipv4Addr::new(0, 0, 0, 0),
+        Ipv4Addr::new(0, 0, 0, 0),
         MyServer {},
     );
 }
@@ -24,7 +25,9 @@ impl server::Handler for MyServer {
                 };
                 println!(
                     "{}\t{}\t{}\tOnline",
-                    time::OffsetDateTime::now_local().format("%Y-%m-%dT%H:%M:%S"),
+                    time::OffsetDateTime::try_now_local()
+                        .unwrap()
+                        .format("%Y-%m-%dT%H:%M:%S"),
                     chaddr(&in_packet.chaddr),
                     Ipv4Addr::from(req_ip)
                 );

@@ -1,11 +1,11 @@
+//! This is a convenience module that simplifies the writing of a DHCP server service.
+
 use std::cell::Cell;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 
 use crate::options;
 use crate::options::{DhcpOption, MessageType};
 use crate::packet::*;
-
-///! This is a convenience module that simplifies the writing of a DHCP server service.
 
 pub struct Server {
     out_buf: Cell<[u8; 1500]>,
@@ -22,12 +22,12 @@ pub trait Handler {
 pub fn filter_options_by_req(opts: &mut Vec<DhcpOption>, req_params: &[u8]) {
     let mut pos = 0;
     let h = &[
-        options::DHCP_MESSAGE_TYPE as u8,
-        options::SERVER_IDENTIFIER as u8,
-        options::SUBNET_MASK as u8,
-        options::IP_ADDRESS_LEASE_TIME as u8,
-        options::DOMAIN_NAME_SERVER as u8,
-        options::ROUTER as u8,
+        options::DHCP_MESSAGE_TYPE,
+        options::SERVER_IDENTIFIER,
+        options::SUBNET_MASK,
+        options::IP_ADDRESS_LEASE_TIME,
+        options::DOMAIN_NAME_SERVER,
+        options::ROUTER,
     ] as &[u8];
 
     // Process options from req_params
@@ -74,7 +74,7 @@ impl Server {
     pub fn serve<H: Handler>(
         udp_soc: UdpSocket,
         server_ip: Ipv4Addr,
-    broadcast_ip: Ipv4Addr,
+        broadcast_ip: Ipv4Addr,
         mut handler: H,
     ) -> std::io::Error {
         let mut in_buf: [u8; 1500] = [0; 1500];
@@ -82,9 +82,8 @@ impl Server {
             out_buf: Cell::new([0; 1500]),
             socket: udp_soc,
             server_ip,
-	        broadcast_ip,
+            broadcast_ip,
             src: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 0),
-
         };
         loop {
             match s.socket.recv_from(&mut in_buf) {
@@ -92,7 +91,7 @@ impl Server {
                 Ok((l, src)) => {
                     if let Ok(p) = Packet::from(&in_buf[..l]) {
                         s.src = src;
-			
+
                         handler.handle_request(&s, p);
                     }
                 }
@@ -133,7 +132,7 @@ impl Server {
         if let Some(DhcpOption::ParameterRequestList(prl)) =
             req_packet.option(options::PARAMETER_REQUEST_LIST)
         {
-            filter_options_by_req(&mut opts, &prl);
+            filter_options_by_req(&mut opts, prl);
         }
 
         self.send(Packet {
@@ -154,21 +153,19 @@ impl Server {
     /// Checks the packet see if it was intended for this DHCP server (as opposed to some other also on the network).
     pub fn for_this_server(&self, packet: &Packet) -> bool {
         match packet.option(options::SERVER_IDENTIFIER) {
-            Some(DhcpOption::ServerIdentifier(x)) => {
-                x == &self.server_ip
-            },
+            Some(DhcpOption::ServerIdentifier(x)) => x == &self.server_ip,
             _ => false,
         }
     }
 
-/// Encodes and sends a DHCP packet back to the client.
-pub fn send(&self, p: Packet) -> std::io::Result<usize> {
-    let mut addr = self.src;
-    if p.broadcast || addr.ip() == IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)) {
-        addr.set_ip(std::net::IpAddr::V4(self.broadcast_ip));
-    }
-    println!("Sending Response to: {:?}", addr); // Print the address
+    /// Encodes and sends a DHCP packet back to the client.
+    pub fn send(&self, p: Packet) -> std::io::Result<usize> {
+        let mut addr = self.src;
+        if p.broadcast || addr.ip() == IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)) {
+            addr.set_ip(std::net::IpAddr::V4(self.broadcast_ip));
+        }
+        println!("Sending Response to: {:?}", addr); // Print the address
 
-    self.socket.send_to(p.encode(&mut self.out_buf.get()), addr)
-}
+        self.socket.send_to(p.encode(&mut self.out_buf.get()), addr)
+    }
 }

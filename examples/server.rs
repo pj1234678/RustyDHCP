@@ -1,12 +1,9 @@
-#[macro_use(u32_bytes, bytes_u32)]
-extern crate dhcp4r;
-
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::net::{Ipv4Addr, UdpSocket};
 use std::ops::Add;
 use std::time::{Duration, Instant};
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 
 use dhcp4r::{options, packet, server};
 
@@ -24,42 +21,41 @@ const LEASE_DURATION_SECS: u32 = 86400;
 const LEASE_NUM: u32 = 252;
 
 // Derived constants
-const IP_START_NUM: u32 = bytes_u32!(IP_START);
+const IP_START_NUM: u32 = u32::from_be_bytes(IP_START);
 const INFINITE_LEASE: Option<Instant> = None; // Special value for infinite lease
-
 
 fn main() {
     let socket = UdpSocket::bind("0.0.0.0:67").unwrap();
     socket.set_broadcast(true).unwrap();
 
-  let mut leases: HashMap<Ipv4Addr, ([u8; 6], Option<Instant>)> = HashMap::new();
+    let mut leases: HashMap<Ipv4Addr, ([u8; 6], Option<Instant>)> = HashMap::new();
     // Read and populate leases from the file
-if let Ok(file) = File::open("leases") {
-    let reader = BufReader::new(file);
-    for line in reader.lines() {
-        if let Ok(line) = line {
-            let parts: Vec<&str> = line.split(',').collect();
-            if parts.len() == 2 {
-                let mac_parts: Vec<u8> = parts[0]
-                    .split(':')
-                    .filter_map(|part| u8::from_str_radix(part, 16).ok())
-                    .collect();
+    if let Ok(file) = File::open("leases") {
+        let reader = BufReader::new(file);
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                let parts: Vec<&str> = line.split(',').collect();
+                if parts.len() == 2 {
+                    let mac_parts: Vec<u8> = parts[0]
+                        .split(':')
+                        .filter_map(|part| u8::from_str_radix(part, 16).ok())
+                        .collect();
 
-                if mac_parts.len() == 6 {
-                    let mut mac = [0u8; 6];
-                    mac.copy_from_slice(&mac_parts);
+                    if mac_parts.len() == 6 {
+                        let mut mac = [0u8; 6];
+                        mac.copy_from_slice(&mac_parts);
 
-                    let ip = parts[1].trim().parse::<Ipv4Addr>().unwrap();
-                    leases.insert(ip, (mac, INFINITE_LEASE));
+                        let ip = parts[1].trim().parse::<Ipv4Addr>().unwrap();
+                        leases.insert(ip, (mac, INFINITE_LEASE));
+                    }
                 }
             }
         }
+    } else {
+        eprintln!("Failed to open leases file. Continuing...");
+        //return;
     }
-} else {
-    eprintln!("Failed to open leases file. Continuing...");
-    //return;
-}
-    
+
     let ms = MyServer {
         leases,
         last_lease: 0,
@@ -79,10 +75,9 @@ impl server::Handler for MyServer {
     fn handle_request(&mut self, server: &server::Server, in_packet: packet::Packet) {
         match in_packet.message_type() {
             Ok(options::MessageType::Discover) => {
-		
                 // Otherwise prefer existing (including expired if available)
                 if let Some(ip) = self.current_lease(&in_packet.chaddr) {
-			println!("Sending Reply to discover");
+                    println!("Sending Reply to discover");
                     reply(server, options::MessageType::Offer, in_packet, &ip);
                     return;
                 }
@@ -93,7 +88,7 @@ impl server::Handler for MyServer {
                         &in_packet.chaddr,
                         &((IP_START_NUM + &self.last_lease).into()),
                     ) {
-						println!("Sending Reply to discover");
+                        println!("Sending Reply to discover");
                         reply(
                             server,
                             options::MessageType::Offer,
@@ -108,29 +103,35 @@ impl server::Handler for MyServer {
             Ok(options::MessageType::Request) => {
                 // Ignore requests to alternative DHCP server
                 if !server.for_this_server(&in_packet) {
-					//println!("Not for this server");
-                   // return;
+                    //println!("Not for this server");
+                    // return;
                 }
-		
+
                 let req_ip = match in_packet.option(options::REQUESTED_IP_ADDRESS) {
                     Some(options::DhcpOption::RequestedIpAddress(x)) => *x,
                     _ => in_packet.ciaddr,
                 };
-		 for (ip, (mac, _)) in &self.leases {
-            println!("IP: {:?}, MAC: {:?}", ip, mac);
-        }
-		   if let Some(ip) = self.current_lease(&in_packet.chaddr) {
-			println!("Found Current Lease");
+                for (ip, (mac, _)) in &self.leases {
+                    println!("IP: {:?}, MAC: {:?}", ip, mac);
+                }
+                if let Some(ip) = self.current_lease(&in_packet.chaddr) {
+                    println!("Found Current Lease");
                     reply(server, options::MessageType::Ack, in_packet, &ip);
                     return;
                 }
                 if !&self.available(&in_packet.chaddr, &req_ip) {
-						println!("Sending Reply to Request");
+                    println!("Sending Reply to Request");
                     nak(server, in_packet, "Requested IP not available");
                     return;
                 }
-                self.leases.insert(req_ip, (in_packet.chaddr, Some(Instant::now().add(self.lease_duration))));					
-		println!("Sending Reply to Request");
+                self.leases.insert(
+                    req_ip,
+                    (
+                        in_packet.chaddr,
+                        Some(Instant::now().add(self.lease_duration)),
+                    ),
+                );
+                println!("Sending Reply to Request");
                 reply(server, options::MessageType::Ack, in_packet, &req_ip);
             }
 
@@ -162,8 +163,7 @@ impl MyServer {
                 None => true,
             }
     }
-	    fn current_lease(&self, chaddr: &[u8; 6]) -> Option<Ipv4Addr> {
-
+    fn current_lease(&self, chaddr: &[u8; 6]) -> Option<Ipv4Addr> {
         for (i, v) in &self.leases {
             if v.0 == *chaddr {
                 return Some(*i);
