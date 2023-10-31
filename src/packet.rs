@@ -19,8 +19,6 @@ pub enum ErrorKind {
 
 type IResult<I, O> = Result<(I, O), CustomErr<I>>;
 
-
-
 /// DHCP Packet Structure
 #[derive(Debug)]
 pub struct Packet {
@@ -75,7 +73,7 @@ where
                     remaining = input;
                 }
                 Err(CustomErr::NomError(_)) => return Ok((remaining, acc)),
-               Err(e) => return Err(e),
+                Err(e) => return Err(e),
             }
         }
     }
@@ -85,12 +83,14 @@ pub fn decode_option(input: &[u8]) -> IResult<&[u8], DhcpOption> {
     assert!(code != END);
 
     let (input, len) = custom_be_u8(input)?;
-     let (input, data) = custom_take(len.into())(input)?;
+    let (input, data) = custom_take(len.into())(input)?;
     let option = match code {
-        DHCP_MESSAGE_TYPE => DhcpOption::DhcpMessageType(match MessageType::from(custom_be_u8(data)?.1) {
-            Ok(x) => x,
-             Err(_) => return Err(CustomErr::UnrecognizedMessageType),
-        }),
+        DHCP_MESSAGE_TYPE => {
+            DhcpOption::DhcpMessageType(match MessageType::from(custom_be_u8(data)?.1) {
+                Ok(x) => x,
+                Err(_) => return Err(CustomErr::UnrecognizedMessageType),
+            })
+        }
         SERVER_IDENTIFIER => DhcpOption::ServerIdentifier(decode_ipv4(data)?.1),
         PARAMETER_REQUEST_LIST => DhcpOption::ParameterRequestList(data.to_vec()),
         REQUESTED_IP_ADDRESS => DhcpOption::RequestedIpAddress(decode_ipv4(data)?.1),
@@ -174,7 +174,6 @@ fn decode(input: &[u8]) -> IResult<&[u8], Packet> {
     let (input, giaddr) = decode_ipv4(input)?;
 
     if hlen != 6 {
-		
         return Err(CustomErr::InvalidHlen);
     }
     let (_, chaddr) = custom_take(6usize)(input)?;
@@ -182,7 +181,6 @@ fn decode(input: &[u8]) -> IResult<&[u8], Packet> {
     let input = options_input;
     let (input, _) = custom_tag(&COOKIE)(input)?;
 
-   
     let mut options = Vec::new();
     let mut rest = input;
 
@@ -223,7 +221,6 @@ fn decode(input: &[u8]) -> IResult<&[u8], Packet> {
 
 impl Packet {
     pub fn from(input: &[u8]) -> Result<Packet, CustomErr<&[u8]>> {
-
         Ok(decode(input)?.1)
     }
 
@@ -248,58 +245,58 @@ impl Packet {
             None => Err("Packet does not have MessageType option".to_string()),
         }
     }
- pub fn encode<'a>(&'a self, p: &'a mut [u8]) -> &[u8] {
-    let broadcast_flag = if self.broadcast { 128 } else { 0 };
-    let mut length = 240;
+    pub fn encode<'a>(&'a self, p: &'a mut [u8]) -> &[u8] {
+        let broadcast_flag = if self.broadcast { 128 } else { 0 };
+        let mut length = 240;
 
-    p[..12].copy_from_slice(&[
-        if self.reply { BOOT_REPLY } else { BOOT_REQUEST },
-        1,
-        6,
-        self.hops,
-        ((self.xid >> 24) & 0xFF) as u8,
-        ((self.xid >> 16) & 0xFF) as u8,
-        ((self.xid >> 8) & 0xFF) as u8,
-        (self.xid & 0xFF) as u8,
-        (self.secs >> 8) as u8,
-        (self.secs & 255) as u8,
-        broadcast_flag,
-        0,
-    ]);
+        p[..12].copy_from_slice(&[
+            if self.reply { BOOT_REPLY } else { BOOT_REQUEST },
+            1,
+            6,
+            self.hops,
+            ((self.xid >> 24) & 0xFF) as u8,
+            ((self.xid >> 16) & 0xFF) as u8,
+            ((self.xid >> 8) & 0xFF) as u8,
+            (self.xid & 0xFF) as u8,
+            (self.secs >> 8) as u8,
+            (self.secs & 255) as u8,
+            broadcast_flag,
+            0,
+        ]);
 
-    p[12..16].copy_from_slice(&self.ciaddr.octets());
-    p[16..20].copy_from_slice(&self.yiaddr.octets());
-    p[20..24].copy_from_slice(&self.siaddr.octets());
-    p[24..28].copy_from_slice(&self.giaddr.octets());
-    p[28..34].copy_from_slice(&self.chaddr);
-    p[34..236].fill(0);
-    p[236..240].copy_from_slice(&COOKIE);
+        p[12..16].copy_from_slice(&self.ciaddr.octets());
+        p[16..20].copy_from_slice(&self.yiaddr.octets());
+        p[20..24].copy_from_slice(&self.siaddr.octets());
+        p[24..28].copy_from_slice(&self.giaddr.octets());
+        p[28..34].copy_from_slice(&self.chaddr);
+        p[34..236].fill(0);
+        p[236..240].copy_from_slice(&COOKIE);
 
-    for option in &self.options {
-        let option = option.to_raw();
-        let option_len = option.data.len();
-        if length + 2 + option_len >= 272 {
-            break;
+        for option in &self.options {
+            let option = option.to_raw();
+            let option_len = option.data.len();
+            if length + 2 + option_len >= 272 {
+                break;
+            }
+            if let Some(dest) = p.get_mut(length..length + 2 + option_len) {
+                dest[0] = option.code;
+                dest[1] = option_len as u8;
+                dest[2..].copy_from_slice(&option.data);
+            }
+            length += 2 + option_len;
         }
-        if let Some(dest) = p.get_mut(length..length + 2 + option_len) {
-            dest[0] = option.code;
-            dest[1] = option_len as u8;
-            dest[2..].copy_from_slice(&option.data);
+
+        if let Some(end_segment) = p.get_mut(length..length + 1) {
+            end_segment[0] = END;
         }
-        length += 2 + option_len;
-    }
+        length += 1;
 
-    if let Some(end_segment) = p.get_mut(length..length + 1) {
-        end_segment[0] = END;
-    }
-    length += 1;
+        if let Some(pad_segment) = p.get_mut(length..272) {
+            pad_segment.fill(PAD);
+        }
 
-    if let Some(pad_segment) = p.get_mut(length..272) {
-        pad_segment.fill(PAD);
+        &p[..length]
     }
-
-    &p[..length]
-}
 }
 
 const COOKIE: [u8; 4] = [99, 130, 83, 99];

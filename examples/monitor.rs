@@ -25,7 +25,9 @@ impl server::Handler for MyServer {
                 };
                 println!(
                     "{}\t{}\t{}\tOnline",
-                    time::OffsetDateTime::try_now_local().unwrap().format("%Y-%m-%dT%H:%M:%S"),
+                    time::OffsetDateTime::try_now_local()
+                        .unwrap()
+                        .format("%Y-%m-%dT%H:%M:%S"),
                     chaddr(&in_packet.chaddr),
                     Ipv4Addr::from(req_ip)
                 );
