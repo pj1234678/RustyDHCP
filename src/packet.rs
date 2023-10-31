@@ -133,7 +133,7 @@ fn custom_tag<'a>(tag: &'static [u8]) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], 
     }
 }
 fn custom_be_u8(input: &[u8]) -> IResult<&[u8], u8> {
-    if input.len() < 1 {
+    if input.is_empty() {
         return Err(CustomErr::InvalidHlen);
     }
 
@@ -184,16 +184,11 @@ fn decode(input: &[u8]) -> IResult<&[u8], Packet> {
     let mut options = Vec::new();
     let mut rest = input;
 
-    loop {
-        match decode_option(rest) {
-            Ok((new_rest, option)) => {
-                rest = new_rest;
-                options.push(option);
-                if rest.starts_with(&[END]) {
-                    break;
-                }
-            }
-            Err(_) => break,
+    while let Ok((new_rest, option)) = decode_option(rest) {
+        rest = new_rest;
+        options.push(option);
+        if rest.starts_with(&[END]) {
+            break;
         }
     }
 
@@ -226,12 +221,7 @@ impl Packet {
 
     /// Extracts requested option payload from packet if available
     pub fn option(&self, code: u8) -> Option<&DhcpOption> {
-        for option in &self.options {
-            if option.code() == code {
-                return Some(&option);
-            }
-        }
-        None
+        self.options.iter().find(|&option| option.code() == code)
     }
 
     /// Convenience function for extracting a packet's message type.

@@ -1,11 +1,11 @@
+//! This is a convenience module that simplifies the writing of a DHCP server service.
+
 use std::cell::Cell;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 
 use crate::options;
 use crate::options::{DhcpOption, MessageType};
 use crate::packet::*;
-
-///! This is a convenience module that simplifies the writing of a DHCP server service.
 
 pub struct Server {
     out_buf: Cell<[u8; 1500]>,
@@ -22,12 +22,12 @@ pub trait Handler {
 pub fn filter_options_by_req(opts: &mut Vec<DhcpOption>, req_params: &[u8]) {
     let mut pos = 0;
     let h = &[
-        options::DHCP_MESSAGE_TYPE as u8,
-        options::SERVER_IDENTIFIER as u8,
-        options::SUBNET_MASK as u8,
-        options::IP_ADDRESS_LEASE_TIME as u8,
-        options::DOMAIN_NAME_SERVER as u8,
-        options::ROUTER as u8,
+        options::DHCP_MESSAGE_TYPE,
+        options::SERVER_IDENTIFIER,
+        options::SUBNET_MASK,
+        options::IP_ADDRESS_LEASE_TIME,
+        options::DOMAIN_NAME_SERVER,
+        options::ROUTER,
     ] as &[u8];
 
     // Process options from req_params
@@ -132,7 +132,7 @@ impl Server {
         if let Some(DhcpOption::ParameterRequestList(prl)) =
             req_packet.option(options::PARAMETER_REQUEST_LIST)
         {
-            filter_options_by_req(&mut opts, &prl);
+            filter_options_by_req(&mut opts, prl);
         }
 
         self.send(Packet {
